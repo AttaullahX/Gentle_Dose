@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../add_medication/add_medication_screen.dart';
@@ -8,6 +10,7 @@ import '../profile/profile_screen.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/models/medication.dart';
 import '../../../core/models/appointment.dart';
+import '../../../core/services/auth_service.dart';
 
 /// Home Screen - Main dashboard with medications and appointments
 class HomeScreen extends StatefulWidget {
@@ -21,34 +24,10 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedTabIndex = 0; // 0 for Medications, 1 for Appointments
   String _selectedMedicationFilter = 'upcoming'; // completed, missed, upcoming
   String _selectedAppointmentFilter = 'upcoming'; // completed, missed, upcoming
+  final _authService = AuthService();
+  StreamSubscription<List<Map<String, dynamic>>>? _medicationSubscription;
 
-  // Sample medications data
-  List<Medication> medications = [
-    Medication(
-      id: '1',
-      name: 'Aspirin',
-      dosage: '500mg\n1 Tablet',
-      time: 'Today, 10:00 AM',
-      notes: 'Take after meal',
-      status: MedicationStatus.upcoming,
-    ),
-    Medication(
-      id: '2',
-      name: 'Aspirin',
-      dosage: '500mg\n1 Tablet',
-      time: 'Today, 10:00 AM',
-      notes: 'Take after meal',
-      status: MedicationStatus.missed,
-    ),
-    Medication(
-      id: '3',
-      name: 'Aspirin',
-      dosage: '500 mg\n1 Tablet',
-      time: 'Today, 10:00 AM',
-      notes: 'Take after meal',
-      status: MedicationStatus.completed,
-    ),
-  ];
+  List<Medication> medications = [];
 
   // Sample appointments data
   List<Appointment> appointments = [
@@ -85,19 +64,37 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _medicationSubscription =
+        _authService.medicationHistoryStream().listen((records) {
+      if (!mounted) return;
+      setState(() {
+        medications = records.map(_medicationFromFirestore).toList();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _medicationSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         title: Row(
           children: [
             const Spacer(),
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.notifications_outlined,
-                color: Colors.black,
+                color: cs.onBackground,
                 size: 28,
               ),
               onPressed: () {
@@ -125,8 +122,8 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: Container(
         width: 64,
         height: 64,
-        decoration: const BoxDecoration(
-          color: Color(0xFF407CE2),
+        decoration: BoxDecoration(
+          color: cs.primary,
           shape: BoxShape.circle,
         ),
         child: FloatingActionButton(
@@ -184,6 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTabButton(String title, int index) {
     final isSelected = _selectedTabIndex == index;
+    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -193,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF407CE2) : Colors.transparent,
+          color: isSelected ? cs.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -201,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
           style: GoogleFonts.poppins(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: isSelected ? Colors.white : Colors.black,
+            color: isSelected ? Colors.white : cs.onBackground,
           ),
         ),
       ),
@@ -240,6 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFilterButton(String value, String label) {
     final isSelected = _selectedMedicationFilter == value;
+    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -250,7 +249,8 @@ class _HomeScreenState extends State<HomeScreen> {
         height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? _getFilterColor(value) : Colors.grey[200],
+          color: isSelected ? _getFilterColor(value) : cs.surface,
+          border: Border.all(color: Theme.of(context).dividerColor),
           borderRadius: BorderRadius.circular(22),
         ),
         child: Center(
@@ -259,7 +259,8 @@ class _HomeScreenState extends State<HomeScreen> {
             style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : Colors.grey[600],
+              color:
+                  isSelected ? Colors.white : cs.onSurface.withOpacity(0.7),
             ),
             textAlign: TextAlign.center,
           ),
@@ -304,14 +305,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMedicationCard(Medication medication) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(
+              Theme.of(context).brightness == Brightness.dark ? 0.18 : 0.05,
+            ),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -329,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black,
+                  color: cs.onSurface,
                 ),
               ),
               Icon(Icons.edit_outlined, color: Colors.grey[400], size: 20),
@@ -341,7 +345,10 @@ class _HomeScreenState extends State<HomeScreen> {
           // Dosage info
           Text(
             medication.dosage.split('\n')[1],
-            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: cs.onSurface.withOpacity(0.7),
+            ),
           ),
 
           const SizedBox(height: 16),
@@ -350,13 +357,16 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: Theme.of(context).scaffoldBackgroundColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey[300]!),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Text(
               medication.time,
-              style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[700]),
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: cs.onSurface.withOpacity(0.75),
+              ),
             ),
           ),
 
@@ -370,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 medication.notes,
                 style: GoogleFonts.poppins(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: cs.onSurface.withOpacity(0.7),
                 ),
               ),
               _buildActionButton(medication),
@@ -459,26 +469,45 @@ class _HomeScreenState extends State<HomeScreen> {
         medications[index] = medications[index].copyWith(status: newStatus);
       }
     });
+    _authService.updateMedicationStatus(
+      medicationId: medicationId,
+      status: newStatus.displayName,
+    );
   }
 
-  void _addNewMedication(Map<String, dynamic> medicationData) {
-    setState(() {
-      // Get the first reminder time or default
-      final reminderTimes = medicationData['reminderTimes'] as List<String>?;
-      final firstTime = reminderTimes?.isNotEmpty == true
-          ? reminderTimes!.first
-          : '10:00 AM';
-
-      final newMedication = Medication(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: medicationData['name'] ?? 'Unknown',
-        dosage: '${medicationData['dosage'] ?? 'Unknown dosage'}\n1 Tablet',
-        time: 'Today, $firstTime',
-        notes: medicationData['notes'] ?? 'No notes',
-        status: MedicationStatus.upcoming,
-      );
-      medications.add(newMedication);
+  Future<void> _addNewMedication(Map<String, dynamic> medicationData) async {
+    await _authService.saveMedicationHistory({
+      ...medicationData,
+      'status': MedicationStatus.upcoming.displayName,
     });
+  }
+
+  Medication _medicationFromFirestore(Map<String, dynamic> data) {
+    final reminderTimes = data['reminderTimes'];
+    final firstTime = reminderTimes is List && reminderTimes.isNotEmpty
+        ? reminderTimes.first.toString()
+        : (data['time'] ?? '10:00 AM').toString();
+    final status = _statusFromString((data['status'] ?? 'upcoming').toString());
+
+    return Medication(
+      id: (data['id'] ?? '').toString(),
+      name: (data['name'] ?? 'Medication').toString(),
+      dosage: '${data['dosage'] ?? 'Dose'}\n1 Tablet',
+      time: 'Today, $firstTime',
+      notes: (data['notes'] ?? 'No notes').toString(),
+      status: status,
+    );
+  }
+
+  MedicationStatus _statusFromString(String value) {
+    switch (value) {
+      case 'completed':
+        return MedicationStatus.completed;
+      case 'missed':
+        return MedicationStatus.missed;
+      default:
+        return MedicationStatus.upcoming;
+    }
   }
 
   void _addNewAppointment(Map<String, dynamic> appointmentData) {
@@ -498,24 +527,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptyMedicationsState() {
+    final cs = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.medication_outlined, size: 100, color: Colors.grey[400]),
+          Icon(
+            Icons.medication_outlined,
+            size: 100,
+            color: cs.onSurface.withOpacity(0.35),
+          ),
           const SizedBox(height: 16),
           Text(
             'No medications found',
             style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w500,
-              color: Colors.grey[600],
+              color: cs.onSurface.withOpacity(0.75),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Tap the + button to add your first medication',
-            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[500]),
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: cs.onSurface.withOpacity(0.55),
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -559,6 +596,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildAppointmentFilterButton(String value, String label) {
     final isSelected = _selectedAppointmentFilter == value;
+    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -571,7 +609,8 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? _getAppointmentFilterColor(value)
-              : Colors.grey[200],
+              : cs.surface,
+          border: Border.all(color: Theme.of(context).dividerColor),
           borderRadius: BorderRadius.circular(22),
         ),
         child: Center(
@@ -580,7 +619,8 @@ class _HomeScreenState extends State<HomeScreen> {
             style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : Colors.grey[600],
+              color:
+                  isSelected ? Colors.white : cs.onSurface.withOpacity(0.7),
             ),
             textAlign: TextAlign.center,
           ),
@@ -625,6 +665,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptyAppointmentsState() {
+    final cs = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -632,7 +673,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(
             Icons.calendar_today_outlined,
             size: 100,
-            color: Colors.grey[400],
+            color: cs.onSurface.withOpacity(0.35),
           ),
           const SizedBox(height: 16),
           Text(
@@ -640,13 +681,16 @@ class _HomeScreenState extends State<HomeScreen> {
             style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w500,
-              color: Colors.grey[600],
+              color: cs.onSurface.withOpacity(0.75),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Tap the + button to add your first appointment',
-            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[500]),
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: cs.onSurface.withOpacity(0.55),
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -655,14 +699,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAppointmentCard(Appointment appointment) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(
+              Theme.of(context).brightness == Brightness.dark ? 0.18 : 0.05,
+            ),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -681,7 +728,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: cs.onSurface,
                   ),
                 ),
               ),
@@ -694,7 +741,10 @@ class _HomeScreenState extends State<HomeScreen> {
           // Doctor name
           Text(
             appointment.doctor,
-            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: cs.onSurface.withOpacity(0.7),
+            ),
           ),
 
           const SizedBox(height: 16),
@@ -703,13 +753,16 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: Theme.of(context).scaffoldBackgroundColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey[300]!),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Text(
               appointment.dateTime,
-              style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[700]),
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: cs.onSurface.withOpacity(0.75),
+              ),
             ),
           ),
 
@@ -722,14 +775,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icon(
                   Icons.location_on_outlined,
                   size: 16,
-                  color: Colors.grey[500],
+                  color: cs.onSurface.withOpacity(0.6),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   appointment.location,
                   style: GoogleFonts.poppins(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: cs.onSurface.withOpacity(0.7),
                   ),
                 ),
               ],
@@ -740,7 +793,10 @@ class _HomeScreenState extends State<HomeScreen> {
           // Reminder info
           Text(
             'Reminder: ${appointment.reminder}',
-            style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: cs.onSurface.withOpacity(0.7),
+            ),
           ),
 
           const SizedBox(height: 16),
@@ -838,14 +894,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBottomNavigationBar() {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       height: 85,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(
+              Theme.of(context).brightness == Brightness.dark ? 0.24 : 0.1,
+            ),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -915,7 +974,9 @@ class _HomeScreenState extends State<HomeScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: isSelected ? const Color(0xFF407CE2) : Colors.grey[400],
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
               ),
             ),
           ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/models/patient_models.dart';
+import '../../../core/services/auth_service.dart';
 import 'patient_detail_screen.dart';
 
 /// Caregiver Patients Screen - Shows list of patients under care
@@ -15,125 +16,13 @@ class CaregiverPatientsScreen extends StatefulWidget {
 
 class _CaregiverPatientsScreenState extends State<CaregiverPatientsScreen> {
   int _selectedNavIndex = 1; // Patients tab is selected
-
-  // Sample patients data
-  final List<Patient> patients = [
-    Patient(
-      id: '1',
-      name: 'Mustafa Ali',
-      condition: 'Hypertension',
-      profileImage: AppAssets.profileImg,
-      totalDoses: 5,
-      takenDoses: 3,
-      missedDoses: 2,
-      medications: [
-        Medication(
-          name: 'Lisinopril',
-          time: '8:00 AM',
-          status: MedicationStatus.taken,
-        ),
-        Medication(
-          name: 'Amlodipine',
-          time: '2:00 PM',
-          status: MedicationStatus.taken,
-        ),
-        Medication(
-          name: 'Metformin',
-          time: '6:00 PM',
-          status: MedicationStatus.missed,
-        ),
-        Medication(
-          name: 'Aspirin',
-          time: '10:00 PM',
-          status: MedicationStatus.taken,
-        ),
-        Medication(
-          name: 'Vitamin D',
-          time: '8:00 AM',
-          status: MedicationStatus.missed,
-        ),
-      ],
-    ),
-    Patient(
-      id: '2',
-      name: 'Sarah Johnson',
-      condition: 'Diabetes',
-      profileImage: AppAssets.profileImg,
-      totalDoses: 4,
-      takenDoses: 4,
-      missedDoses: 0,
-      medications: [
-        Medication(
-          name: 'Insulin',
-          time: '7:00 AM',
-          status: MedicationStatus.taken,
-        ),
-        Medication(
-          name: 'Metformin',
-          time: '12:00 PM',
-          status: MedicationStatus.taken,
-        ),
-        Medication(
-          name: 'Insulin',
-          time: '6:00 PM',
-          status: MedicationStatus.taken,
-        ),
-        Medication(
-          name: 'Glipizide',
-          time: '9:00 PM',
-          status: MedicationStatus.taken,
-        ),
-      ],
-    ),
-    Patient(
-      id: '3',
-      name: 'Robert Wilson',
-      condition: 'Heart Disease',
-      profileImage: AppAssets.profileImg,
-      totalDoses: 6,
-      takenDoses: 5,
-      missedDoses: 1,
-      medications: [
-        Medication(
-          name: 'Atorvastatin',
-          time: '7:00 AM',
-          status: MedicationStatus.taken,
-        ),
-        Medication(
-          name: 'Metoprolol',
-          time: '9:00 AM',
-          status: MedicationStatus.taken,
-        ),
-        Medication(
-          name: 'Lisinopril',
-          time: '1:00 PM',
-          status: MedicationStatus.taken,
-        ),
-        Medication(
-          name: 'Aspirin',
-          time: '6:00 PM',
-          status: MedicationStatus.missed,
-        ),
-        Medication(
-          name: 'Clopidogrel',
-          time: '8:00 PM',
-          status: MedicationStatus.taken,
-        ),
-        Medication(
-          name: 'Fish Oil',
-          time: '10:00 PM',
-          status: MedicationStatus.taken,
-        ),
-      ],
-    ),
-  ];
+  final _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: Text(
@@ -141,15 +30,15 @@ class _CaregiverPatientsScreenState extends State<CaregiverPatientsScreen> {
           style: GoogleFonts.poppins(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onBackground,
           ),
         ),
         centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.notifications_outlined,
-              color: Colors.black,
+              color: Theme.of(context).colorScheme.onBackground,
               size: 28,
             ),
             onPressed: () {
@@ -171,11 +60,34 @@ class _CaregiverPatientsScreenState extends State<CaregiverPatientsScreen> {
   }
 
   Widget _buildPatientsList() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: patients.length,
-      itemBuilder: (context, index) {
-        return _buildPatientCard(patients[index]);
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _authService.caregiverPatientsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final patients = (snapshot.data ?? []).map(_patientFromSummary).toList();
+        if (patients.isEmpty) {
+          return Center(
+            child: Text(
+              'No patients connected yet',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          itemCount: patients.length,
+          itemBuilder: (context, index) {
+            return _buildPatientCard(patients[index]);
+          },
+        );
       },
     );
   }
@@ -194,9 +106,9 @@ class _CaregiverPatientsScreenState extends State<CaregiverPatientsScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!),
+          border: Border.all(color: Theme.of(context).dividerColor),
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(0.1),
@@ -232,7 +144,7 @@ class _CaregiverPatientsScreenState extends State<CaregiverPatientsScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -241,7 +153,7 @@ class _CaregiverPatientsScreenState extends State<CaregiverPatientsScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -279,7 +191,7 @@ class _CaregiverPatientsScreenState extends State<CaregiverPatientsScreen> {
       height: 85,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -348,7 +260,9 @@ class _CaregiverPatientsScreenState extends State<CaregiverPatientsScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: isSelected ? const Color(0xFF407CE2) : Colors.grey[400],
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
               ),
             ),
           ],
@@ -369,5 +283,27 @@ class _CaregiverPatientsScreenState extends State<CaregiverPatientsScreen> {
         Navigator.pushReplacementNamed(context, '/caregiver-profile');
         break;
     }
+  }
+
+  Patient _patientFromSummary(Map<String, dynamic> data) {
+    final total = _asInt(data['totalMedications']);
+    final completed = _asInt(data['completedMedications']);
+    final missed = _asInt(data['missedMedications']);
+    return Patient(
+      id: (data['patientId'] ?? '').toString(),
+      name: (data['name'] ?? 'Patient').toString(),
+      condition: (data['gender'] ?? '').toString(),
+      profileImage: AppAssets.profileImg,
+      totalDoses: total,
+      takenDoses: completed,
+      missedDoses: missed,
+      medications: const [],
+    );
+  }
+
+  int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 }

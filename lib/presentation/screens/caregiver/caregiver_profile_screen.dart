@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../../core/services/auth_service.dart';
 
 /// Caregiver Profile Screen with caregiver-specific options
 class CaregiverProfileScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class CaregiverProfileScreen extends StatefulWidget {
 class _CaregiverProfileScreenState extends State<CaregiverProfileScreen> {
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
+  final _authService = AuthService();
   int _selectedNavIndex = 2; // Profile tab is selected
 
   Future<void> _selectImage() async {
@@ -85,16 +87,15 @@ class _CaregiverProfileScreenState extends State<CaregiverProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.notifications_outlined,
-              color: Colors.black,
+              color: Theme.of(context).colorScheme.onBackground,
               size: 28,
             ),
             onPressed: () {
@@ -163,13 +164,19 @@ class _CaregiverProfileScreenState extends State<CaregiverProfileScreen> {
             const SizedBox(height: 16),
 
             // Caregiver Name
-            Text(
-              'John Doe',
-              style: GoogleFonts.poppins(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
+            FutureBuilder<Map<String, dynamic>?>(
+              future: _authService.getCaregiverProfile(),
+              builder: (context, snapshot) {
+                final name = snapshot.data?['name'] ?? 'Caregiver';
+                return Text(
+                  name,
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onBackground,
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 40),
@@ -219,9 +226,9 @@ class _CaregiverProfileScreenState extends State<CaregiverProfileScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.grey[50],
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Row(
             children: [
@@ -248,7 +255,7 @@ class _CaregiverProfileScreenState extends State<CaregiverProfileScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -261,14 +268,17 @@ class _CaregiverProfileScreenState extends State<CaregiverProfileScreen> {
   }
 
   Widget _buildBottomNavigationBar() {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       height: 85,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(
+              Theme.of(context).brightness == Brightness.dark ? 0.24 : 0.1,
+            ),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -334,7 +344,9 @@ class _CaregiverProfileScreenState extends State<CaregiverProfileScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: isSelected ? const Color(0xFF407CE2) : Colors.grey[400],
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
               ),
             ),
           ],

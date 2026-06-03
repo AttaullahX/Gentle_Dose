@@ -24,6 +24,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.black.withOpacity(
         0.5,
@@ -33,7 +34,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
           margin: const EdgeInsets.all(20),
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cs.surface,
             borderRadius: BorderRadius.circular(16),
           ),
           child: SingleChildScrollView(
@@ -108,7 +109,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
           style: GoogleFonts.poppins(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         GestureDetector(
@@ -117,10 +118,14 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: Colors.grey[200],
+              color: Theme.of(context).scaffoldBackgroundColor,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.close, color: Colors.black, size: 24),
+            child: Icon(
+              Icons.close,
+              color: Theme.of(context).colorScheme.onSurface,
+              size: 24,
+            ),
           ),
         ),
       ],
@@ -142,20 +147,23 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
           style: GoogleFonts.poppins(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: Colors.grey[50],
+            color: Theme.of(context).scaffoldBackgroundColor,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFE0E0E0)),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: TextField(
             controller: controller,
             maxLines: maxLines,
-            style: GoogleFonts.poppins(fontSize: 14, color: Colors.black),
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
             decoration: InputDecoration(
               hintText: placeholder,
               hintStyle: GoogleFonts.poppins(
@@ -186,7 +194,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
           style: GoogleFonts.poppins(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
@@ -195,9 +203,9 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
           child: Container(
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: Theme.of(context).scaffoldBackgroundColor,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE0E0E0)),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Row(
               children: [
@@ -299,7 +307,9 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF407CE2) : Colors.grey[200],
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -307,7 +317,9 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
           style: GoogleFonts.poppins(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF666666),
+            color: isSelected
+                ? Colors.white
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.75),
           ),
         ),
       ),
@@ -349,7 +361,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
           style: GoogleFonts.poppins(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
@@ -368,9 +380,9 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
           child: Container(
             height: 45,
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: Theme.of(context).scaffoldBackgroundColor,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE0E0E0)),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Row(
               children: [
@@ -383,7 +395,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       color: date != null
-                          ? Colors.black
+                          ? Theme.of(context).colorScheme.onSurface
                           : const Color(0xFF9E9E9E),
                     ),
                   ),

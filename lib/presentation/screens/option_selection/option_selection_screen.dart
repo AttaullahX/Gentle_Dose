@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_assets.dart';
-import '../patient_info/patient_info_screen.dart';
 
 /// Option Selection Screen - Choose between Patient and Caregiver
 /// Screen size: 360x248
@@ -18,9 +17,7 @@ class _OptionSelectionScreenState extends State<OptionSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(
-        0xFFF5F5F5,
-      ), // Light gray background as per design
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Choose an option title text
@@ -69,7 +66,7 @@ class _OptionSelectionScreenState extends State<OptionSelectionScreen> {
       style: GoogleFonts.poppins(
         fontSize: 22,
         fontWeight: FontWeight.w700, // Bold
-        color: Colors.black,
+        color: Theme.of(context).colorScheme.onBackground,
         height: 1.0,
       ),
     );
@@ -157,20 +154,11 @@ class _OptionSelectionScreenState extends State<OptionSelectionScreen> {
       height: 50,
       child: ElevatedButton(
         onPressed: selectedOption != null
-            ? () {
-                if (selectedOption == 1) {
-                  // Navigate to patient info screen
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PatientInfoScreen(),
-                    ),
-                  );
-                } else if (selectedOption == 2) {
-                  // Navigate to caregiver add details screen
-                  Navigator.pushNamed(context, '/caregiver-add-details');
-                }
-              }
+            ? () => Navigator.pushNamed(
+                  context,
+                  '/login',
+                  arguments: selectedOption == 1 ? 'patient' : 'caregiver',
+                )
             : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: selectedOption != null

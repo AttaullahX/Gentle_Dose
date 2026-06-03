@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/auth_service.dart';
 
 /// Caregiver Add Details Screen - Simple form with name and contact
 class CaregiverAddDetailsScreen extends StatefulWidget {
@@ -14,12 +15,23 @@ class _CaregiverAddDetailsScreenState extends State<CaregiverAddDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _contactController = TextEditingController();
+  final _authService = AuthService();
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Set placeholder text for contact number
-    _contactController.text = '+920000000000';
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final data = await _authService.getCaregiverProfile();
+    if (data != null && mounted) {
+      setState(() {
+        _nameController.text = data['name'] ?? '';
+        _contactController.text = data['contactNumber'] ?? '';
+      });
+    }
   }
 
   @override
@@ -32,12 +44,14 @@ class _CaregiverAddDetailsScreenState extends State<CaregiverAddDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onBackground,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -45,7 +59,7 @@ class _CaregiverAddDetailsScreenState extends State<CaregiverAddDetailsScreen> {
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onBackground,
           ),
         ),
         centerTitle: true,
@@ -97,7 +111,7 @@ class _CaregiverAddDetailsScreenState extends State<CaregiverAddDetailsScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _handleConfirm,
+                  onPressed: _isLoading ? null : _handleConfirm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF407CE2),
                     foregroundColor: Colors.white,
@@ -107,7 +121,7 @@ class _CaregiverAddDetailsScreenState extends State<CaregiverAddDetailsScreen> {
                     ),
                   ),
                   child: Text(
-                    'Confirm',
+                    _isLoading ? 'Saving...' : 'Confirm',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -130,7 +144,7 @@ class _CaregiverAddDetailsScreenState extends State<CaregiverAddDetailsScreen> {
       style: GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.w500,
-        color: Colors.black,
+        color: Theme.of(context).colorScheme.onBackground,
       ),
     );
   }
@@ -148,7 +162,7 @@ class _CaregiverAddDetailsScreenState extends State<CaregiverAddDetailsScreen> {
       style: GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.w400,
-        color: Colors.black,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
       decoration: InputDecoration(
         hintText: hintText,
@@ -158,14 +172,14 @@ class _CaregiverAddDetailsScreenState extends State<CaregiverAddDetailsScreen> {
           color: Colors.grey[500],
         ),
         filled: true,
-        fillColor: Colors.grey[50],
+        fillColor: Theme.of(context).colorScheme.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+          borderSide: BorderSide(color: Theme.of(context).dividerColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+          borderSide: BorderSide(color: Theme.of(context).dividerColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -187,28 +201,32 @@ class _CaregiverAddDetailsScreenState extends State<CaregiverAddDetailsScreen> {
     );
   }
 
-  void _handleConfirm() {
+  Future<void> _handleConfirm() async {
     if (_formKey.currentState!.validate()) {
-      // Save caregiver details
-      _saveCaregiverDetails();
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Caregiver details saved successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Navigate to caregiver home screen
-      Navigator.pushReplacementNamed(context, '/caregiver-home');
+      setState(() => _isLoading = true);
+      try {
+        await _authService.saveCaregiverProfile(
+          name: _nameController.text,
+          contactNumber: _contactController.text,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Caregiver details saved successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pushReplacementNamed(context, '/caregiver-home');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
-  }
-
-  void _saveCaregiverDetails() {
-    // Here you would typically save the data to a database or shared preferences
-    // For now, we'll just print the values
-    print('Caregiver Name: ${_nameController.text}');
-    print('Contact Number: ${_contactController.text}');
   }
 }

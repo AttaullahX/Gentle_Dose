@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../../core/services/auth_service.dart';
 
 /// Caregiver Home Screen - Shows patients and their medications/appointments
 class CaregiverHomeScreen extends StatefulWidget {
@@ -13,23 +14,13 @@ class CaregiverHomeScreen extends StatefulWidget {
 class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
   String _selectedTab = 'Medications';
   int _selectedNavIndex = 0;
-
-  // Sample data for demonstration
-  final List<Patient> patients = [
-    Patient(
-      name: 'Mustafa Ali',
-      progress: 'Progress: 3/5 Doses',
-      missedCount: 2,
-      profileImage: AppAssets.profileImg,
-    ),
-  ];
+  final _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: Column(
@@ -40,7 +31,7 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: Theme.of(context).colorScheme.onBackground,
               ),
             ),
             Text(
@@ -48,7 +39,7 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onBackground.withOpacity(0.65),
               ),
             ),
           ],
@@ -56,9 +47,9 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
         centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.notifications_outlined,
-              color: Colors.black,
+              color: Theme.of(context).colorScheme.onBackground,
               size: 28,
             ),
             onPressed: () {
@@ -89,27 +80,42 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
   }
 
   Widget _buildTabButtons() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildTabButton(
-              'Medications',
-              '10 Total / 3 Missed',
-              _selectedTab == 'Medications',
-            ),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _authService.caregiverPatientsStream(),
+      builder: (context, snapshot) {
+        final patients = snapshot.data ?? [];
+        final total = patients.fold<int>(
+          0,
+          (sum, item) => sum + _asInt(item['totalMedications']),
+        );
+        final missed = patients.fold<int>(
+          0,
+          (sum, item) => sum + _asInt(item['missedMedications']),
+        );
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildTabButton(
+                  'Medications',
+                  '$total Total / $missed Missed',
+                  _selectedTab == 'Medications',
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildTabButton(
+                  'Appointments',
+                  '0 Total / 0 Missed',
+                  _selectedTab == 'Appointments',
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _buildTabButton(
-              'Appointments',
-              '5 Total / 0 Missed',
-              _selectedTab == 'Appointments',
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -123,10 +129,14 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF407CE2) : Colors.grey[100],
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF407CE2) : Colors.grey[300]!,
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).dividerColor,
           ),
         ),
         child: Column(
@@ -137,7 +147,9 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : Colors.black,
+                color: isSelected
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 4),
@@ -146,7 +158,9 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
-                color: isSelected ? Colors.white70 : Colors.grey[600],
+                color: isSelected
+                    ? Colors.white70
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
               ),
             ),
           ],
@@ -156,20 +170,46 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
   }
 
   Widget _buildMedicationsContent() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: patients.length,
-      itemBuilder: (context, index) {
-        return _buildPatientMedicationCard(patients[index]);
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _authService.caregiverPatientsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final patients = (snapshot.data ?? []).map(_patientFromSummary).toList();
+        if (patients.isEmpty) {
+          return Center(
+            child: Text(
+              'No patients connected yet',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          itemCount: patients.length,
+          itemBuilder: (context, index) {
+            return _buildPatientMedicationCard(patients[index]);
+          },
+        );
       },
     );
   }
 
   Widget _buildAppointmentsContent() {
-    return const Center(
+    return Center(
       child: Text(
         'No appointments scheduled',
-        style: TextStyle(fontSize: 16, color: Colors.grey),
+        style: TextStyle(
+          fontSize: 16,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
       ),
     );
   }
@@ -179,9 +219,9 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: Theme.of(context).dividerColor),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -217,7 +257,7 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -226,7 +266,7 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
                   ),
                 ),
               ],
@@ -259,7 +299,7 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
       height: 85,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -328,7 +368,9 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: isSelected ? const Color(0xFF407CE2) : Colors.grey[400],
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
               ),
             ),
           ],
@@ -365,4 +407,22 @@ class Patient {
     required this.missedCount,
     required this.profileImage,
   });
+}
+
+Patient _patientFromSummary(Map<String, dynamic> data) {
+  final total = _asInt(data['totalMedications']);
+  final completed = _asInt(data['completedMedications']);
+  final missed = _asInt(data['missedMedications']);
+  return Patient(
+    name: (data['name'] ?? 'Patient').toString(),
+    progress: 'Progress: $completed/$total Doses',
+    missedCount: missed,
+    profileImage: AppAssets.profileImg,
+  );
+}
+
+int _asInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
 }

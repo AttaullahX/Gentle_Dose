@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../home/home_screen.dart';
+import '../../../core/services/auth_service.dart';
 
 /// Caregiver Information Screen - Add Caregiver
 class CaregiverInfoScreen extends StatefulWidget {
@@ -15,8 +15,22 @@ class _CaregiverInfoScreenState extends State<CaregiverInfoScreen> {
       TextEditingController();
   final TextEditingController _contactNumberController =
       TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final _authService = AuthService();
   String _selectedRelationship = '';
   String _selectedFrequency = '';
+  bool _isLoading = false;
+
+  void _showToast(String message, {Color? backgroundColor}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: GoogleFonts.poppins(fontSize: 14)),
+        backgroundColor: backgroundColor ?? const Color(0xFF407CE2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +80,15 @@ class _CaregiverInfoScreenState extends State<CaregiverInfoScreen> {
               placeholder: '+8801XXXXXXX',
               controller: _contactNumberController,
               keyboardType: TextInputType.phone,
+            ),
+
+            const SizedBox(height: 24),
+
+            _buildTextField(
+              label: 'Caregiver Email',
+              placeholder: 'caregiver@email.com',
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
             ),
 
             const SizedBox(height: 24),
@@ -282,14 +305,7 @@ class _CaregiverInfoScreenState extends State<CaregiverInfoScreen> {
           width: double.infinity,
           height: 50,
           child: ElevatedButton(
-            onPressed: () {
-              // Navigate to home screen
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-                (route) => false,
-              );
-            },
+            onPressed: _isLoading ? null : _saveCaregiver,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF407CE2),
               shape: RoundedRectangleBorder(
@@ -298,7 +314,7 @@ class _CaregiverInfoScreenState extends State<CaregiverInfoScreen> {
               elevation: 0,
             ),
             child: Text(
-              'Confirm',
+              _isLoading ? 'Saving...' : 'Confirm',
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -316,10 +332,9 @@ class _CaregiverInfoScreenState extends State<CaregiverInfoScreen> {
           height: 50,
           child: OutlinedButton(
             onPressed: () {
-              // Navigate to home screen (skip caregiver setup)
-              Navigator.pushAndRemoveUntil(
+              Navigator.pushNamedAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
+                '/home',
                 (route) => false,
               );
             },
@@ -347,6 +362,49 @@ class _CaregiverInfoScreenState extends State<CaregiverInfoScreen> {
   void dispose() {
     _caregiverNameController.dispose();
     _contactNumberController.dispose();
+    _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveCaregiver() async {
+    if (_caregiverNameController.text.trim().isEmpty ||
+        _contactNumberController.text.trim().isEmpty ||
+        _selectedRelationship.isEmpty ||
+        _selectedFrequency.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please complete caregiver details')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await _authService.saveCaregiver(
+        name: _caregiverNameController.text,
+        relationship: _selectedRelationship,
+        contactNumber: _contactNumberController.text,
+        email: _emailController.text,
+        reportFrequency: _selectedFrequency,
+      );
+
+      if (mounted) {
+        _showToast(
+          'Caregiver details saved successfully',
+          backgroundColor: Colors.green[600],
+        );
+        await Future.delayed(const Duration(milliseconds: 250));
+        if (!mounted) return;
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      }
+    } catch (e) {
+      if (mounted) {
+        _showToast(
+          e.toString().replaceFirst('Exception: ', ''),
+          backgroundColor: Colors.red,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/auth_service.dart';
 
-/// User Profile Screen - Edit user's personal information
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
 
@@ -14,8 +14,33 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   final _ageController = TextEditingController();
   final _bloodGroupController = TextEditingController();
   final _contactController = TextEditingController();
+  final _authService = AuthService();
 
   String _selectedGender = 'Male';
+  bool _isLoading = false;
+  bool _isFetching = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final data = await _authService.getPatientProfile();
+    if (data != null && mounted) {
+      setState(() {
+        _nameController.text = data['name'] ?? '';
+        _ageController.text = data['age'] ?? '';
+        _bloodGroupController.text = data['bloodGroup'] ?? '';
+        _contactController.text = data['contactNumber'] ?? '';
+        _selectedGender = data['gender'] ?? 'Male';
+        _isFetching = false;
+      });
+    } else {
+      if (mounted) setState(() => _isFetching = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -28,117 +53,130 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 24),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDark ? const Color(0xFFE8EDF5) : Colors.black,
+          ),
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'User Profile',
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: Colors.black,
+            color: isDark ? const Color(0xFFE8EDF5) : Colors.black,
           ),
         ),
-        centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
-
-            // Name field
-            _buildInputField('Name', 'Enter your name', _nameController),
-
-            const SizedBox(height: 20),
-
-            // Age field
-            _buildInputField('Age', 'Enter your age', _ageController),
-
-            const SizedBox(height: 20),
-
-            // Gender selection
-            _buildGenderField(),
-
-            const SizedBox(height: 20),
-
-            // Blood Group field
-            _buildInputField(
-              'Blood Group',
-              'Enter your Blood Group',
-              _bloodGroupController,
+      body: _isFetching
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
+                  _buildInputField(
+                    'Name',
+                    'Enter your name',
+                    _nameController,
+                    isDark,
+                    cs,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildInputField(
+                    'Age',
+                    'Enter your age',
+                    _ageController,
+                    isDark,
+                    cs,
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildGenderField(isDark, cs),
+                  const SizedBox(height: 20),
+                  _buildInputField(
+                    'Blood Group',
+                    'e.g. O+',
+                    _bloodGroupController,
+                    isDark,
+                    cs,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildInputField(
+                    'Contact Number',
+                    '+92...',
+                    _contactController,
+                    isDark,
+                    cs,
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 40),
+                  _buildSaveButton(cs),
+                  const SizedBox(height: 16),
+                  _buildCancelButton(isDark),
+                ],
+              ),
             ),
-
-            const SizedBox(height: 20),
-
-            // Contact Number field
-            _buildInputField(
-              'Contact Number',
-              'Enter your contact number',
-              _contactController,
-            ),
-
-            const SizedBox(height: 40),
-
-            // Action buttons
-            Column(
-              children: [
-                _buildSaveButton(),
-                const SizedBox(height: 16),
-                _buildCancelButton(),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 
   Widget _buildInputField(
     String label,
     String hint,
-    TextEditingController controller,
-  ) {
+    TextEditingController ctrl,
+    bool isDark,
+    ColorScheme cs, {
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: GoogleFonts.poppins(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Colors.black,
+            color: isDark ? const Color(0xFFE8EDF5) : Colors.black87,
           ),
         ),
         const SizedBox(height: 8),
         TextFormField(
-          controller: controller,
+          controller: ctrl,
+          keyboardType: keyboardType,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: isDark ? const Color(0xFFE8EDF5) : Colors.black87,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.poppins(
               fontSize: 14,
-              color: Colors.grey[400],
+              color: isDark ? const Color(0xFF6B7A99) : Colors.grey[400],
             ),
+            filled: true,
+            fillColor: isDark ? const Color(0xFF1E2533) : Colors.grey[50],
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF2A3144) : Colors.grey[300]!,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF2A3144) : Colors.grey[300]!,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF407CE2)),
+              borderSide: BorderSide(color: cs.primary, width: 2),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -150,45 +188,49 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildGenderField() {
+  Widget _buildGenderField(bool isDark, ColorScheme cs) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Gender',
           style: GoogleFonts.poppins(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Colors.black,
+            color: isDark ? const Color(0xFFE8EDF5) : Colors.black87,
           ),
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(child: _buildGenderOption('Male')),
+            Expanded(child: _buildGenderOption('Male', isDark, cs)),
             const SizedBox(width: 12),
-            Expanded(child: _buildGenderOption('Female')),
+            Expanded(child: _buildGenderOption('Female', isDark, cs)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildGenderOption(String gender) {
+  Widget _buildGenderOption(String gender, bool isDark, ColorScheme cs) {
     final isSelected = _selectedGender == gender;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedGender = gender;
-        });
-      },
+      onTap: () => setState(() => _selectedGender = gender),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF407CE2) : Colors.grey[100],
+          color: isSelected
+              ? cs.primary
+              : isDark
+              ? const Color(0xFF1E2533)
+              : Colors.grey[100],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF407CE2) : Colors.grey[300]!,
+            color: isSelected
+                ? cs.primary
+                : isDark
+                ? const Color(0xFF2A3144)
+                : Colors.grey[300]!,
           ),
         ),
         child: Center(
@@ -197,7 +239,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: isSelected ? Colors.white : Colors.grey[600],
+              color: isSelected
+                  ? Colors.white
+                  : isDark
+                  ? const Color(0xFF6B7A99)
+                  : Colors.grey[600],
             ),
           ),
         ),
@@ -205,78 +251,112 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(ColorScheme cs) {
     return SizedBox(
       width: double.infinity,
+      height: 52,
       child: ElevatedButton(
-        onPressed: _saveProfile,
+        onPressed: _isLoading ? null : _saveProfile,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF407CE2),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          backgroundColor: cs.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(25),
           ),
-          elevation: 0,
         ),
-        child: Text(
-          'Save Changes',
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(
+                'Save Changes',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }
 
-  Widget _buildCancelButton() {
+  Widget _buildCancelButton(bool isDark) {
     return SizedBox(
       width: double.infinity,
+      height: 52,
       child: OutlinedButton(
-        onPressed: () {
-          Navigator.pop(context);
-        },
+        onPressed: () => Navigator.pop(context),
         style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          side: BorderSide(
+            color: isDark ? const Color(0xFF2A3144) : Colors.grey[300]!,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(25),
           ),
-          side: BorderSide(color: Colors.grey[300]!),
         ),
         child: Text(
           'Cancel',
           style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Colors.grey[600],
+            color: isDark ? const Color(0xFF6B7A99) : Colors.grey[600],
           ),
         ),
       ),
     );
   }
 
-  void _saveProfile() {
-    // Validate and save profile data
-    if (_nameController.text.isEmpty) {
+  Future<void> _saveProfile() async {
+    if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter your name'),
+          content: Text('Enter the name is Compulsory'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profile updated successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    setState(() => _isLoading = true);
 
-    // Navigate back
-    Navigator.pop(context);
+    try {
+      await _authService.savePatientProfile(
+        name: _nameController.text,
+        age: _ageController.text,
+        gender: _selectedGender,
+        bloodGroup: _bloodGroupController.text,
+        contactNumber: _contactController.text,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Profile updated successfully!',
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 }
